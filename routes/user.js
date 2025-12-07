@@ -16,7 +16,7 @@ userRouter.post("/signin", (req, res) => {
 
 userRouter.get("/purchases", (req, res) => {
   res.json({
-    message: "signup endpoint",
+    message: "purchases endpoint",
   });
 });
 
