@@ -1,9 +1,7 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const ObjectId = mongoose.ObjectId;
-mongoose.connect(
-  "mongodb+srv://jraditya_db_user:UX05rt3Sqi47gHB5@cluster0.fxnhwht.mongodb.net/coursera-app"
-);
+require("dotenv").config();
 
 const userSchema = new Schema({
   email: { type: String, unique: true },
@@ -20,7 +18,7 @@ const adminSchema = new Schema({
 });
 
 const courseSchema = new Schema({
-  email: { type: toString, unique: true },
+  email: { type: String, unique: true },
   password: String,
   firstName: String,
   lastName: String,

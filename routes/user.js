@@ -1,14 +1,80 @@
 const { Router } = require("express");
+const bcrypt = require("bcrypt");
+const { z } = require("zod");
+const { userModel } = require("../db");
+const jwt = require("jsonwebtoken");
+JWT_USER_PASSWORD = "adityajr16112005";
 
 const userRouter = Router();
 
-userRouter.post("/signup", (req, res) => {
-  res.json({
-    message: "signup endpoint",
+userRouter.post("/signup", async (req, res) => {
+  const requiredBody = z.object({
+    email: z.string().min(3).max(100).email(),
+    password: z.string().min(3).max(20),
+    firstName: z.string().min(3).max(30),
+    lastName: z.string().min(3).max(100),
   });
+
+  const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+  if (!parsedDataWithSuccess.success) {
+    return res.status(400).json({
+      message: "Incorrect format",
+      error: parsedDataWithSuccess.error,
+    });
+  }
+
+  const { email, password, firstName, lastName } = req.body;
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // FIXED: Using adminModel for admin signup
+    // FIXED: Saving 'hashedPassword', not the plain 'password'
+    await userModel.create({
+      email: email,
+      password: hashedPassword,
+      firstName: firstName,
+      lastName: lastName,
+    });
+
+    return res.status(201).json({
+      message: "Signed up successfully",
+    });
+  } catch (e) {
+    console.error(e);
+    // Duplicate key error code
+    if (e.code === 11000) {
+      return res.status(409).json({
+        message: "User already exists",
+      });
+    }
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 });
 
-userRouter.post("/signin", (req, res) => {
+userRouter.post("/signin", async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await userModel.findOne({
+    email: email,
+    password: password,
+  });
+
+  if (user) {
+    const token = jwt.sign({
+      id: user._id,
+    });
+
+    res.json({
+      token: token,
+    });
+  } else {
+    res.status();
+  }
+
   res.json({
     message: "signin endpoint",
   });
@@ -21,5 +87,5 @@ userRouter.get("/purchases", (req, res) => {
 });
 
 module.exports = {
-  userRouter: userRouter,
+  userRouter,
 };

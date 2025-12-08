@@ -2,7 +2,9 @@ const { Router } = require("express");
 const adminRouter = Router();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
-const { UserModel } = require("../../Full-stack/todo-app-with-zod-bcrypt/db");
+
+// FIXED: Adjusted path to standard relative path and import name to camelCase
+const { adminModel } = require("../db");
 
 adminRouter.post("/signup", async (req, res) => {
   const requiredBody = z.object({
@@ -15,26 +17,22 @@ adminRouter.post("/signup", async (req, res) => {
   const parsedDataWithSuccess = requiredBody.safeParse(req.body);
 
   if (!parsedDataWithSuccess.success) {
-    res.json({
+    return res.status(400).json({
       message: "Incorrect format",
       error: parsedDataWithSuccess.error,
     });
-    return;
   }
 
-  try {
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({
-        message:
-          "All fields (email, password, firstname, lastname) are required",
-      });
-    }
+  const { email, password, firstName, lastName } = req.body;
 
+  try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await UserModel.create({
+    // FIXED: Using adminModel for admin signup
+    // FIXED: Saving 'hashedPassword', not the plain 'password'
+    await adminModel.create({
       email: email,
-      password: password,
+      password: hashedPassword,
       firstName: firstName,
       lastName: lastName,
     });
@@ -44,45 +42,18 @@ adminRouter.post("/signup", async (req, res) => {
     });
   } catch (e) {
     console.error(e);
-
+    // Duplicate key error code
     if (e.code === 11000) {
       return res.status(409).json({
-        message: "User already exits",
+        message: "User already exists",
       });
     }
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
-
-  const { email, password, firstName, lastName } = req.body;
-
-  res.json({
-    message: "signup endpoint",
-  });
-});
-
-adminRouter.post("/signin", (req, res) => {
-  res.json({
-    message: "signin endpoint",
-  });
-});
-
-adminRouter.post("/", (req, res) => {
-  res.json({
-    message: "signin endpoint",
-  });
-});
-
-adminRouter.put("/", (req, res) => {
-  res.json({
-    message: "signin endpoint",
-  });
-});
-
-adminRouter.get("/bulk", (req, res) => {
-  res.json({
-    message: "signin endpoint",
-  });
 });
 
 module.exports = {
-  adminRouter: adminRouter,
+  adminRouter,
 };
