@@ -2,8 +2,9 @@ const { Router } = require("express");
 const adminRouter = Router();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
-// FIXED: Adjusted path to standard relative path and import name to camelCase
 const { adminModel } = require("../db");
 
 adminRouter.post("/signup", async (req, res) => {
@@ -28,8 +29,6 @@ adminRouter.post("/signup", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // FIXED: Using adminModel for admin signup
-    // FIXED: Saving 'hashedPassword', not the plain 'password'
     await adminModel.create({
       email: email,
       password: hashedPassword,
@@ -50,6 +49,53 @@ adminRouter.post("/signup", async (req, res) => {
     }
     return res.status(500).json({
       message: "Internal server error",
+    });
+  }
+});
+
+adminRouter.post("/signin", async (req, res) => {
+  const requiredBody = z.object({
+    email: z.string().min(3).max(100).email(),
+    password: z.string().min(3).max(20),
+  });
+
+  const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+  if (!parsedDataWithSuccess.success) {
+    return res.json({
+      message: "Incorrect data form",
+      error: parsedDataWithSuccess.error,
+    });
+  }
+
+  const { email, password } = req.body;
+
+  const admin = await adminModel.findOne({
+    email: email,
+  });
+
+  if (!admin) {
+    return res.status(403).json({
+      message: "Invalid Credentials!",
+    });
+  }
+
+  const passwordMatch = await bcrypt.compare(password, admin.password);
+
+  if (passwordMatch) {
+    const token = jwt.sign(
+      {
+        id: admin._id,
+      },
+      JWT_ADMIN_PASSWORD
+    );
+
+    res.status(200).json({
+      token: token,
+    });
+  } else {
+    res.status(403).json({
+      message: "Invalid Credentials!",
     });
   }
 });
