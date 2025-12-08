@@ -4,8 +4,9 @@ const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const { adminMiddleware } = require("../middleware/admin");
 
-const { adminModel } = require("../db");
+const { adminModel, courseModel } = require("../db");
 
 adminRouter.post("/signup", async (req, res) => {
   const requiredBody = z.object({
@@ -98,6 +99,37 @@ adminRouter.post("/signin", async (req, res) => {
       message: "Invalid Credentials!",
     });
   }
+});
+
+adminRouter.post("/course", adminMiddleware, async function (req, res) {
+  const adminId = req.userId;
+
+  const { title, description, imageUrl, price } = req.body;
+
+  const course = await courseModel.create({
+    title: title,
+    description: description,
+    imageUrl: imageUrl,
+    price: price,
+    creatorId: adminId,
+  });
+
+  res.json({
+    message: "Course created",
+    courseId: course._id,
+  });
+});
+
+adminRouter.put("/course", function (req, res) {
+  res.json({
+    message: "Signup endpoint",
+  });
+});
+
+adminRouter.get("/course", function (req, res) {
+  res.json({
+    message: "Signup endpoint",
+  });
 });
 
 module.exports = {
