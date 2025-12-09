@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const adminSecretKey = process.env.JWT_ADMIN_PASSWORD;
 const { adminMiddleware } = require("../middleware/admin");
 
 const { adminModel, courseModel } = require("../db");
@@ -88,7 +89,7 @@ adminRouter.post("/signin", async (req, res) => {
       {
         id: admin._id,
       },
-      JWT_ADMIN_PASSWORD
+      adminSecretKey
     );
 
     res.status(200).json({
@@ -120,15 +121,60 @@ adminRouter.post("/course", adminMiddleware, async function (req, res) {
   });
 });
 
-adminRouter.put("/course", function (req, res) {
-  res.json({
-    message: "Signup endpoint",
+adminRouter.put("/course", adminMiddleware, async function (req, res) {
+  const adminId = req.adminId;
+
+  const requiredBody = z.object({
+    courseId: z.string().min(5),
+    title: z.string().min(3).optional(),
+    description: z.string().min(5).optional(),
+    imageUrl: z.string().url().min(5).optional(),
+    price: z.number().positive().optional(),
+  });
+
+  const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+  if (!parsedDataWithSuccess.success) {
+    return res.status(403).json({
+      message: "Incorrect data format",
+      error: parsedDataWithSuccess.error,
+    });
+  }
+
+  const { courseId, title, description, imageUrl, price } = req.body;
+
+  const course = courseModel.findOne({
+    _id: courseId,
+    creatorId: adminId,
+  });
+
+  await courseModel.updateOne(
+    {
+      _id: courseId,
+      creatorId: adminId,
+    },
+    {
+      title: title || course.title,
+      description: description || course.description,
+      imageUrl: imageUrl || course.imageUrl,
+      price: price || course.price,
+    }
+  );
+
+  res.status(200).json({
+    message: "Course updated!",
   });
 });
 
-adminRouter.get("/course", function (req, res) {
+adminRouter.get("/course/bulk", adminMiddleware, async function (req, res) {
+  const adminId = req.userId;
+
+  const courses = await courseModel.find({
+    creatorId: adminId,
+  });
+
   res.json({
-    message: "Signup endpoint",
+    courses: courses,
   });
 });
 
